@@ -1,5 +1,14 @@
 const express = require('express')
 const app = express()
+const cors = require('cors')
+var morgan = require('morgan')
+
+
+app.use(cors())
+// custom morgan
+app.use(express.json())
+morgan.token('entry', function (req, res) { return JSON.stringify(req.body)})
+morgan.format('tiny-more', ':method :url :status :res[content-length] - :response-time ms :entry')
 
 let persons = [
     { 
@@ -23,6 +32,8 @@ let persons = [
       "number": "39-23-6423122"
     }
 ]
+
+app.use(morgan("tiny-more"))
 
 app.get("/", (req, res) => {
     res.send('<h1>Phonebook API</h1>')
@@ -66,7 +77,6 @@ const generateId = () => {
     return Math.floor(Math.random() * 1000000)
 }
 
-app.use(express.json())
 app.post("/api/persons", (req, res) => {
     const person = req.body
 
@@ -88,7 +98,7 @@ app.post("/api/persons", (req, res) => {
     // validate that name isnt in there yet
     const newName = person.name
     const existingPerson = persons.find(person => person.name === newName)
-    if (existingPerson.length !== 0) {
+    if (existingPerson) {
         res.status(400)
         res.write("Error: name must be unique")
         res.end()
@@ -102,7 +112,7 @@ app.post("/api/persons", (req, res) => {
 })
 
 
-const PORT = 3001
+const PORT = process.env.port || 3001
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
 })
