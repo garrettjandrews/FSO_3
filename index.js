@@ -20,13 +20,13 @@ const errorHandler = (error, request, response, next) => {
     if (error.name === "CastError") {
         return response.status(400).send({ error: "malformatted id"})
     } else if (error.name === "ValidationError") {
-        return response.status(400).json({ error: error.message})
+        return response.status(400).json({ error: error.message })
     }
 
     next(error)
 }
 
-app.use(errorHandler)
+
 
 app.get("/", (req, res, next) => {
     res.send('<h1>Phonebook API</h1>')
@@ -84,7 +84,8 @@ app.post("/api/persons", (req, res, next) => {
             name: person.name,
             number: person.number
         })
-        personToAdd.save().then(savedPerson => {
+        personToAdd.save()
+        .then(savedPerson => {
             res.json(savedPerson)
         })
         .catch(error => next(error))
@@ -110,3 +111,5 @@ const PORT = process.env.port || 3001
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
 })
+
+app.use(errorHandler)
