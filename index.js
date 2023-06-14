@@ -71,21 +71,6 @@ app.delete("/api/persons/:id", (req, res, next) => {
 app.post("/api/persons", (req, res, next) => {
     const person = req.body
 
-    // check that the proper thing was passed in
-    if (!person.name) {
-        res.status(400)
-        res.write("Error: must provide a name")
-        res.end()
-        return
-    }
-
-    if (!person.number) {
-        res.status(400)
-        res.write("Error: must provide a number")
-        res.end()
-        return
-    }
-
     // validate that name isnt in there yet
     const newName = person.name
     Person.find({ name: newName }).then(result => {
@@ -102,6 +87,7 @@ app.post("/api/persons", (req, res, next) => {
         personToAdd.save().then(savedPerson => {
             res.json(savedPerson)
         })
+        .catch(error => next(error))
     })
     .catch(error => next(error))
 })
