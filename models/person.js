@@ -5,7 +5,7 @@ const url = process.env.MONGODB_URI
 // connect to mongoDB
 mongoose.connect(url).then(response => {
     console.log("connected")
-})
+}).catch(error => console.log(error))
 // define person schema and person constructor
 const personSchema = new mongoose.Schema({
     name: String,
