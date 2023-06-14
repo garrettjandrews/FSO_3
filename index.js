@@ -2,83 +2,71 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 var morgan = require('morgan')
+require('dotenv').config()
+const Person = require('./models/person')
 
 
 app.use(cors())
 app.use(express.static('build'))
-// custom morgan
 app.use(express.json())
 morgan.token('entry', function (req, res) { return JSON.stringify(req.body)})
 morgan.format('tiny-more', ':method :url :status :res[content-length] - :response-time ms :entry')
-
-let persons = [
-    { 
-      "id": 1,
-      "name": "Arto Hellas", 
-      "number": "040-123456"
-    },
-    { 
-      "id": 2,
-      "name": "Ada Lovelace", 
-      "number": "39-44-5323523"
-    },
-    { 
-      "id": 3,
-      "name": "Dan Abramov", 
-      "number": "12-43-234345"
-    },
-    { 
-      "id": 4,
-      "name": "Mary Poppendieck", 
-      "number": "39-23-6423122"
-    }
-]
-
 app.use(morgan("tiny-more"))
 
-app.get("/", (req, res) => {
+// finally, define a custom error handler
+const errorHandler = (error, request, response, next) => {
+    console.error(error.message)
+
+    if (error.name === "CastError") {
+        return response.status(400).send({ error: "malformatted id"})
+    }
+
+    next(error)
+}
+
+app.use(errorHandler)
+
+app.get("/", (req, res, next) => {
     res.send('<h1>Phonebook API</h1>')
 })
 
-app.get("/info", (req, res) => {
-    res.write(`<p>Phonebook has info for ${persons.length} people</p>`)
-    res.write(`<p>${Date()}</p>`)
-    res.end()
+app.get("/info", (req, res, next) => {
+    Person.find({}).then(response => {
+        res.write(`<p>Phonebook has info for ${response.length} people</p>`)
+        res.write(`<p>${Date()}</p>`)
+        res.end()
+    })
+    .catch(error => next(error))
 })
 
-app.get("/api/persons", (req, res) => {
-    res.json(persons)
+app.get("/api/persons", (req, res, next) => {
+    Person.find({}).then(response => {
+        res.json(response)
+    })
+    .catch(error => next(error))
 })
 
-app.get("/api/persons/:id", (req, res) => {
-    const id = Number(req.params.id)
-    const person = persons.find(person => person.id === id)
-
-    if (person) {
-        res.json(person)
-    } else {
-        res.status(404).end()
-    }
+app.get("/api/persons/:id", (req, res, next) => {
+    Person.findById(req.params.id).then(person => {
+        if (person) {
+            res.json(person)
+        } else {
+            res.status(404).end()
+        }
+    })
+    .catch(error => next(error))
 })
 
-app.delete("/api/persons/:id", (req, res) => {
-    const id = Number(req.params.id)
-    const person = persons.find(person => person.id === id)
-
-    if (person) {
-        persons = persons.filter(person => person.id !== id)
-        res.status(204).end()
-    } else {
-        res.status(404).end()
-    }
+app.delete("/api/persons/:id", (req, res, next) => {
+    Person.findByIdAndRemove(req.params.id).then(result => {
+        res.status(204)
+        res.write("User deleted")
+        res.end()
+    })
+    .catch(error => next(error))
 })
 
-// define a post method for adding a person to the phonebook
-const generateId = () => {
-    return Math.floor(Math.random() * 1000000)
-}
-
-app.post("/api/persons", (req, res) => {
+app.post("/api/persons", (req, res, next) => {
     const person = req.body
 
     // check that the proper thing was passed in
@@ -98,18 +86,35 @@ app.post("/api/persons", (req, res) => {
 
     // validate that name isnt in there yet
     const newName = person.name
-    const existingPerson = persons.find(person => person.name === newName)
-    if (existingPerson) {
-        res.status(400)
-        res.write("Error: name must be unique")
-        res.end()
-        return
+    Person.find({ name: newName }).then(result => {
+        if (result.length !== 0) {
+            res.status(400)
+            res.write("Error: name must be unique")
+            res.end()
+            return
+        }
+        const personToAdd = new Person({
+            name: person.name,
+            number: person.number
+        })
+        personToAdd.save().then(savedPerson => {
+            res.json(savedPerson)
+        })
+    })
+    .catch(error => next(error))
+})
+
+app.put("/api/persons/:id", (req, res, next) => {
+    console.log(req.params.id)
+    const person = {
+        name: req.body.name,
+        number: req.body.number
     }
-
-    person.id = generateId()
-    persons = persons.concat(person)
-
-    res.json(person)
+    Person.findByIdAndUpdate(req.params.id, person, { new: true })
+    .then(updatedPerson => {
+        res.json(updatedPerson)
+    })
+    .catch(error => next(error))
 })
 
 
